@@ -1,5 +1,16 @@
 # Med Man Sandbox Hub 🧪
 
+## Quick Links
+| Workstream | Repo |
+|------------|------|
+| [Discount Functions](#1-extended-shopify-discount-functionality) | [discount-manager-app](https://github.com/mssalemi/discount-manager-app) |
+| [Checkout UI Extensions](#2-checkout-extensibility-checkout-ui-extensions) | [checkout-ui-add-order-metafields](https://github.com/mssalemi/checkout-ui-add-order-metafields) |
+| [Customer Accounts](#3-customer-accounts--order-history) | [customer-accounts-headless-oauth-example](https://github.com/mssalemi/customer-accounts-headless-oauth-example) |
+| [Fulfillment](#4-fulfillment) | [3pl-mock-vercel](https://github.com/mssalemi/3pl-mock-vercel) |
+| [Self-Serve Returns](#5-self-serve-returns) | [selfserve-returns-shopify-app-mock](https://github.com/mssalemi/selfserve-returns-shopify-app-mock) |
+
+---
+
 This repo is a lightweight hub for active prototypes, spikes, and real client exploration
 related to Shopify, Checkout, Functions, Deployments and platform experiments.
 
