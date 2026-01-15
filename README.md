@@ -8,6 +8,7 @@
 | [Customer Accounts](#3-customer-accounts--order-history) | [customer-accounts-headless-oauth-example](https://github.com/mssalemi/customer-accounts-headless-oauth-example) |
 | [Fulfillment](#4-fulfillment) | [3pl-mock-vercel](https://github.com/mssalemi/3pl-mock-vercel) |
 | [Self-Serve Returns](#5-self-serve-returns) | [selfserve-returns-shopify-app-mock](https://github.com/mssalemi/selfserve-returns-shopify-app-mock) |
+| [Metafield Definition Syncer](#6-metafield-definition-syncer) | [meta-sync](https://github.com/mssalemi/mock-meta-syncer) |
 
 ---
 
@@ -97,14 +98,47 @@ Enables: loyalty point redemption, user-selected discounts, experiment variants.
 ---
 
 ### 5) Self-Serve Returns
-**Repo:** https://github.com/mssalemi/selfserve-returns-shopify-app-mock  
-**Status:** ✅ Working prototype  
+**Repo:** https://github.com/mssalemi/selfserve-returns-shopify-app-mock
+**Status:** ✅ Working prototype
 
 **What's proven:**
 - Merchant-facing self-serve returns app
 - Approve, reject, restock, refund flow hooks
 - Full control via Admin API + webhooks can be added for automation
 - Return workflows can be automated via webhook-driven logic
+
+---
+
+### 6) Metafield Definition Syncer
+**Repo:** https://github.com/mssalemi/mock-meta-syncer
+**Status:** ✅ Production-ready
+
+A CLI tool for managing Shopify metafield and metaobject definitions as code. Single source of truth for custom data structures across environments.
+
+**What's proven:**
+- Define metafields/metaobjects in JSON config files
+- Sync definitions across dev → uat → prod environments
+- Version tracking via Shop metafield prevents drift
+- Smart diff detection: create, update, recreate (validation changes), delete
+- Safe by default: protected namespaces (`shopify`, `checkoutblocks`), diff-only mode
+
+**Supported owner types:** PRODUCT, CUSTOMER, ORDER, COMPANY, ARTICLE, DRAFTORDER, COLLECTION, PRODUCTVARIANT, SHOP, + more (15 total)
+
+**CLI usage:**
+```bash
+# Preview changes (safe)
+npx tsx src/sync/index.ts --store-domain mystore.myshopify.com --access-token shpat_... --config-path ./src --diff-only
+
+# Apply sync
+npx tsx src/sync/index.ts --store-domain mystore.myshopify.com --access-token shpat_... --config-path ./src --enable-deletes
+```
+
+**Key pattern:**
+```
+JSON Config → Diff Detection → GraphQL Mutations → Version Update
+```
+
+**Stack:** TypeScript, `@shopify/admin-api-client`, Shopify Admin API 2025-10
 
 ---
 
