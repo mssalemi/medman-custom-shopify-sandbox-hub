@@ -67,20 +67,22 @@ Eventually, this may evolve into a monorepo once direction stabilizes.
 | custom-checkout-fields | `purchase.checkout.block.render` | Collect gift message & delivery notes |
 | Post Purchase Order Metafields | `purchase.thank-you.block.render` | Display metafields + configurable returns link |
 | Thank You x 3P API | `purchase.thank-you.block.render` | External API calls (Cat Facts demo) |
-| Order Status x 3P API | `customer-account.order-status.block.render` | External API calls on order status page |
+| Order Status x 3P API | `customer-account.order-status.block.render` | External API calls + session token demo |
 
-**Unlocked pattern:**
+**Unlocked patterns:**
 ```
 Checkout UI Extension → applyMetafieldChange → Order Metafields
 Checkout UI Extension → applyAttributeChange → Discount Function reads attribute
+Checkout UI Extension → sessionToken.get() → JWT with customer ID → secure 3P API calls
 ```
-Enables: loyalty point redemption, user-selected discounts, experiment variants, custom order data.
+Enables: loyalty point redemption, user-selected discounts, experiment variants, custom order data, authenticated 3P integrations.
 
 **Technical notes:**
 - Requires `tsconfig.json` with `jsxImportSource: "preact"` for JSX
 - Settings require `useSignalEffect` from `@preact/signals` to be reactive
 - Metafields need definitions in Shopify Admin (Settings > Custom data > Orders)
 - `network_access = true` requires Partner Dashboard approval before fetch() works
+- Session token (`shopify.sessionToken.get()`) returns signed JWT with customer ID in `sub` claim
 
 **Caveat:** Doesn't work with accelerated checkout (Apple Pay, Google Pay, Meta Pay).
 
