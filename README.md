@@ -50,22 +50,35 @@ Eventually, this may evolve into a monorepo once direction stabilizes.
 ---
 
 ### 2) Checkout Extensibility (Checkout UI Extensions)
-**Repo:** https://github.com/mssalemi/checkout-ui-add-order-metafields  
-**Status:** ⚠️ In Progress
+**Repo:** https://github.com/mssalemi/checkout-ui-add-order-metafields
+**Status:** ✅ Core functionality validated
 
 **What's proven:**
-- Custom checkout fields (gift message, delivery notes)
-- Checkout UI Extension → Order Metafields persistence
+- Custom checkout fields (gift message, delivery notes) → Order Metafields
+- Thank You page extensions with merchant-configurable settings
+- `useSignalEffect` for reactive settings in Preact extensions
+- `applyMetafieldChange` persists data to order metafields
 - `applyAttributeChange` can update cart attributes mid-checkout
 - Cart attribute changes trigger Discount Function re-evaluation
 
-**Extension target:** `purchase.checkout.block.render`
+**Extensions built:**
+| Extension | Target | Purpose |
+|-----------|--------|---------|
+| custom-checkout-fields | `purchase.checkout.block.render` | Collect gift message & delivery notes |
+| Post Purchase Order Metafields | `purchase.thank-you.block.render` | Display metafields + configurable returns link |
+| Thank You x 3P API | `purchase.thank-you.block.render` | 3rd party API integration (stub - not yet implemented) |
 
 **Unlocked pattern:**
 ```
+Checkout UI Extension → applyMetafieldChange → Order Metafields
 Checkout UI Extension → applyAttributeChange → Discount Function reads attribute
 ```
-Enables: loyalty point redemption, user-selected discounts, experiment variants.
+Enables: loyalty point redemption, user-selected discounts, experiment variants, custom order data.
+
+**Technical notes:**
+- Requires `tsconfig.json` with `jsxImportSource: "preact"` for JSX
+- Settings require `useSignalEffect` from `@preact/signals` to be reactive
+- Metafields need definitions in Shopify Admin (Settings > Custom data > Orders)
 
 **Caveat:** Doesn't work with accelerated checkout (Apple Pay, Google Pay, Meta Pay).
 
