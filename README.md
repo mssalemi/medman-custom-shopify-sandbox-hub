@@ -66,7 +66,8 @@ Eventually, this may evolve into a monorepo once direction stabilizes.
 |-----------|--------|---------|
 | custom-checkout-fields | `purchase.checkout.block.render` | Collect gift message & delivery notes |
 | Post Purchase Order Metafields | `purchase.thank-you.block.render` | Display metafields + configurable returns link |
-| Thank You x 3P API | `purchase.thank-you.block.render` | 3rd party API integration (stub - not yet implemented) |
+| Thank You x 3P API | `purchase.thank-you.block.render` | External API calls (Cat Facts demo) |
+| Order Status x 3P API | `customer-account.order-status.block.render` | External API calls on order status page |
 
 **Unlocked pattern:**
 ```
@@ -79,6 +80,7 @@ Enables: loyalty point redemption, user-selected discounts, experiment variants,
 - Requires `tsconfig.json` with `jsxImportSource: "preact"` for JSX
 - Settings require `useSignalEffect` from `@preact/signals` to be reactive
 - Metafields need definitions in Shopify Admin (Settings > Custom data > Orders)
+- `network_access = true` requires Partner Dashboard approval before fetch() works
 
 **Caveat:** Doesn't work with accelerated checkout (Apple Pay, Google Pay, Meta Pay).
 
