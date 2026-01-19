@@ -9,6 +9,7 @@
 | [Fulfillment](#4-fulfillment) | [3pl-mock-vercel](https://github.com/mssalemi/3pl-mock-vercel) |
 | [Self-Serve Returns](#5-self-serve-returns) | [selfserve-returns-shopify-app-mock](https://github.com/mssalemi/selfserve-returns-shopify-app-mock) |
 | [Metafield Definition Syncer](#6-metafield-definition-syncer) | [meta-sync](https://github.com/mssalemi/mock-meta-syncer) |
+| [SCAS-Lite OAuth Broker](#7-scas-lite-oauth-broker) | [scas-lite-broker](https://github.com/mssalemi/scas-lite-broker) |
 
 ---
 
@@ -156,6 +157,51 @@ JSON Config → Diff Detection → GraphQL Mutations → Version Update
 ```
 
 **Stack:** TypeScript, `@shopify/admin-api-client`, Shopify Admin API 2025-10
+
+---
+
+### 7) SCAS-Lite OAuth Broker
+**Repo:** https://github.com/mssalemi/shopify-auth-broker
+**Status:** ✅ Production-ready
+
+A centralized OAuth broker for managing Shopify app installations and access tokens across multiple apps and shops. Deployed to AWS Lambda via CDK.
+
+**What's proven:**
+- OAuth install flow with HMAC verification
+- Expiring offline tokens with automatic refresh (Shopify's recommended approach)
+- Session token exchange for embedded apps
+- GraphQL proxy with automatic token injection
+- Webhook handling for app uninstalls
+- Multi-app, multi-shop token management
+
+**Architecture:**
+```
+Your Services → SCAS-Lite Broker → Shopify API
+                      ↓
+               DynamoDB (Apps + Installations)
+```
+
+**Key endpoints:**
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /internal/apps` | Register a Shopify app |
+| `GET /oauth/install` | Initiate OAuth flow |
+| `POST /internal/token` | Get valid token (auto-refreshes) |
+| `POST /proxy/graphql` | Proxy GraphQL with token injection |
+
+**Usage from any service:**
+```typescript
+const scas = new ScasClient();
+const { data } = await scas.graphql('shop.myshopify.com', `{ shop { name } }`);
+```
+
+**Why this pattern:**
+- Centralized secrets (client secrets stored once, not scattered)
+- Token refresh handled automatically
+- Any service can access tokens via API
+- Single audit trail for all token access
+
+**Stack:** Fastify, TypeScript, AWS Lambda, DynamoDB, CDK
 
 ---
 
