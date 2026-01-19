@@ -161,45 +161,58 @@ JSON Config → Diff Detection → GraphQL Mutations → Version Update
 ---
 
 ### 7) SCAS-Lite OAuth Broker
-**Repo:** https://github.com/mssalemi/shopify-auth-broker
+**Repo:** https://github.com/mssalemi/scas-lite-broker
 **Status:** ✅ Production-ready
 
-A centralized OAuth broker for managing Shopify app installations and access tokens across multiple apps and shops. Deployed to AWS Lambda via CDK.
+A centralized OAuth broker for enterprise clients with multiple Shopify apps. Register apps once, any service can access Shopify APIs without touching secrets.
 
 **What's proven:**
 - OAuth install flow with HMAC verification
-- Expiring offline tokens with automatic refresh (Shopify's recommended approach)
-- Session token exchange for embedded apps
+- Expiring offline tokens with automatic refresh
 - GraphQL proxy with automatic token injection
-- Webhook handling for app uninstalls
 - Multi-app, multi-shop token management
 
-**Architecture:**
+**Security model:**
 ```
-Your Services → SCAS-Lite Broker → Shopify API
-                      ↓
-               DynamoDB (Apps + Installations)
+┌─────────────────────────────────────────────────────┐
+│  YOUR SERVICES (Fulfillment, Order Sync, etc.)      │
+│  Know: broker URL, internal API key, app ID         │
+│  Don't know: clientSecret, accessToken              │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│  SCAS-LITE BROKER                                   │
+│  Stores all Shopify secrets in DynamoDB             │
+│  Handles token refresh automatically                │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+                    Shopify API
+```
+
+**Usage from any backend service:**
+```typescript
+// Service only needs: SCAS_BROKER_URL, SCAS_API_KEY, SCAS_APP_ID
+// No Shopify secrets required!
+
+const res = await fetch(`${SCAS_BROKER_URL}/proxy/graphql`, {
+  method: 'POST',
+  headers: {
+    'x-api-key': SCAS_API_KEY,        // internal auth
+    'x-app-id': SCAS_APP_ID,          // which app (e.g., "orders-app")
+    'x-shop-domain': 'store.myshopify.com',
+  },
+  body: JSON.stringify({ query: `{ shop { name } }` }),
+});
 ```
 
 **Key endpoints:**
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /internal/apps` | Register a Shopify app |
-| `GET /oauth/install` | Initiate OAuth flow |
-| `POST /internal/token` | Get valid token (auto-refreshes) |
-| `POST /proxy/graphql` | Proxy GraphQL with token injection |
-
-**Usage from any service:**
-```typescript
-const scas = new ScasClient();
-const { data } = await scas.graphql('shop.myshopify.com', `{ shop { name } }`);
-```
-
-**Why this pattern:**
-- Centralized secrets (client secrets stored once, not scattered)
-- Token refresh handled automatically
-- Any service can access tokens via API
-- Single audit trail for all token access
+| `POST /internal/apps` | Register a Shopify app (one-time) |
+| `GET /oauth/install` | Initiate OAuth flow (per shop) |
+| `POST /proxy/graphql` | Proxy GraphQL (broker injects token) |
 
 **Stack:** Fastify, TypeScript, AWS Lambda, DynamoDB, CDK
 
