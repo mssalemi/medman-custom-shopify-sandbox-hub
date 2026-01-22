@@ -61,29 +61,41 @@ Eventually, this may evolve into a monorepo once direction stabilizes.
 - `applyMetafieldChange` persists data to order metafields
 - `applyAttributeChange` can update cart attributes mid-checkout
 - Cart attribute changes trigger Discount Function re-evaluation
+- Read cart attributes set via Storefront API
+- Add items to cart mid-checkout via `applyCartLinesChange`
+- Apply discount codes via `applyDiscountCodeChange`
+- External 3P API calls with `network_access = true`
 
 **Extensions built:**
 | Extension | Target | Purpose |
 |-----------|--------|---------|
 | custom-checkout-fields | `purchase.checkout.block.render` | Collect gift message & delivery notes |
-| Post Purchase Order Metafields | `purchase.thank-you.block.render` | Display metafields + configurable returns link |
-| Thank You x 3P API | `purchase.thank-you.block.render` | External API calls (Cat Facts demo) |
-| Order Status x 3P API | `customer-account.order-status.block.render` | External API calls + session token demo |
+| cart-attributes-debug | `purchase.checkout.block.render` | Read & display cart attributes set via Storefront API |
+| upsell-prototype | `purchase.checkout.block.render` | Add upsell item to cart via `applyCartLinesChange` |
+| loyalty-points-mock | `purchase.checkout.reductions.render-before` | Mock loyalty: 3P API fetch + discount code pattern |
+| post-purchase-order-metafields | `customer-account.order-status.block.render` | Display metafields + configurable returns link |
+| thank-you-api-test | `purchase.thank-you.block.render` | External API calls (Cat Facts demo) |
+| order-status-api-test | `customer-account.order-status.block.render` | External API calls + session token demo |
 
 **Unlocked patterns:**
 ```
 Checkout UI Extension → applyMetafieldChange → Order Metafields
 Checkout UI Extension → applyAttributeChange → Discount Function reads attribute
+Checkout UI Extension → applyCartLinesChange → Add items to cart (upsells)
+Checkout UI Extension → applyDiscountCodeChange → Apply discount codes
+Checkout UI Extension → shopify.attributes.value → Read cart attributes from Storefront API
 Checkout UI Extension → sessionToken.get() → JWT with customer ID → secure 3P API calls
+Checkout UI Extension → fetch() with network_access → 3P API integration
 ```
-Enables: loyalty point redemption, user-selected discounts, experiment variants, custom order data, authenticated 3P integrations.
+Enables: loyalty point redemption, user-selected discounts, upsells/cross-sells, experiment variants, custom order data, authenticated 3P integrations.
 
 **Technical notes:**
 - Requires `tsconfig.json` with `jsxImportSource: "preact"` for JSX
 - Settings require `useSignalEffect` from `@preact/signals` to be reactive
 - Metafields need definitions in Shopify Admin (Settings > Custom data > Orders)
-- `network_access = true` requires Partner Dashboard approval before fetch() works
+- `network_access = true` required in toml for external fetch() calls
 - Session token (`shopify.sessionToken.get()`) returns signed JWT with customer ID in `sub` claim
+- Cart attributes set via Storefront API are readable via `shopify.attributes.value`
 
 **Caveat:** Doesn't work with accelerated checkout (Apple Pay, Google Pay, Meta Pay).
 
@@ -161,16 +173,22 @@ JSON Config → Diff Detection → GraphQL Mutations → Version Update
 ---
 
 ### 7) SCAS-Lite OAuth Broker
-**Repo:** https://github.com/mssalemi/scas-lite-broker
-**Status:** ✅ Production-ready
+**Repo:** https://github.com/mssalemi/scas-lite-broker  
+**Status:** ✅ Production-ready, deployed to AWS  
+**Deployment:** `https://vhmh0yyf7k.execute-api.us-east-1.amazonaws.com/`
 
 A centralized OAuth broker for enterprise clients with multiple Shopify apps. Register apps once, any service can access Shopify APIs without touching secrets.
 
 **What's proven:**
 - OAuth install flow with HMAC verification
-- Expiring offline tokens with automatic refresh
+- Expiring offline tokens with automatic refresh (90-day refresh tokens)
 - GraphQL proxy with automatic token injection
 - Multi-app, multi-shop token management
+- Embedded app support with app-specific status pages (iframe-ready)
+- Client example library with reusable `ScasClient` class
+- Compatible with `@shopify/admin-api-client` SDK
+- Shop domain validation, request timeouts, comprehensive error handling
+- Security best practices (token masking, production guidelines)
 
 **Security model:**
 ```
@@ -185,36 +203,79 @@ A centralized OAuth broker for enterprise clients with multiple Shopify apps. Re
 │  SCAS-LITE BROKER                                   │
 │  Stores all Shopify secrets in DynamoDB             │
 │  Handles token refresh automatically                │
+│  Embedded app status pages per app                  │
 └─────────────────────────────────────────────────────┘
                          │
                          ▼
                     Shopify API
 ```
 
-**Usage from any backend service:**
-```typescript
-// Service only needs: SCAS_BROKER_URL, SCAS_API_KEY, SCAS_APP_ID
-// No Shopify secrets required!
+**Usage patterns:**
 
+**Option A: GraphQL Proxy (Recommended)**
+```typescript
+// Tokens never leave the broker
 const res = await fetch(`${SCAS_BROKER_URL}/proxy/graphql`, {
   method: 'POST',
   headers: {
-    'x-api-key': SCAS_API_KEY,        // internal auth
-    'x-app-id': SCAS_APP_ID,          // which app (e.g., "orders-app")
+    'x-api-key': SCAS_API_KEY,
+    'x-app-id': SCAS_APP_ID,
     'x-shop-domain': 'store.myshopify.com',
   },
   body: JSON.stringify({ query: `{ shop { name } }` }),
 });
 ```
 
-**Key endpoints:**
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /internal/apps` | Register a Shopify app (one-time) |
-| `GET /oauth/install` | Initiate OAuth flow (per shop) |
-| `POST /proxy/graphql` | Proxy GraphQL (broker injects token) |
+**Option B: Get Token + Use Official SDK**
+```typescript
+// Get token from broker
+const { accessToken } = await fetch(`${SCAS_BROKER_URL}/internal/token`, {
+  method: 'POST',
+  headers: { 'x-api-key': SCAS_API_KEY },
+  body: JSON.stringify({ appId: SCAS_APP_ID, shop: 'store.myshopify.com' }),
+}).then(r => r.json());
 
-**Stack:** Fastify, TypeScript, AWS Lambda, DynamoDB, CDK
+// Use with official Shopify client
+const client = createAdminApiClient({
+  storeDomain: 'store.myshopify.com',
+  apiVersion: '2026-01',
+  accessToken,
+});
+```
+
+**Client Example Library:**
+- Reusable `ScasClient` class in `examples/client-example/`
+- Features: shop domain validation, request timeouts (30s), comprehensive error handling
+- Example scripts:
+  - `get-token.ts` - Fetch access tokens
+  - `use-proxy.ts` - GraphQL proxy usage
+  - `use-shopify-client.ts` - Official SDK integration
+  - `test-products.ts` - Production test script (fetches real products)
+  - `full-example.ts` - Complete flow with error handling
+- Security: Token masking utility, SECURITY.md with best practices
+- Production-ready with TypeScript types and error codes
+
+**Key endpoints:**
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| `POST /internal/apps` | Register a Shopify app (one-time) | API key |
+| `GET /oauth/install` | Initiate OAuth flow (per shop) | Public |
+| `POST /proxy/graphql` | Proxy GraphQL (broker injects token) | API key |
+| `POST /internal/token` | Get access token (auto-refreshes) | API key |
+| `POST /internal/token-exchange` | Exchange session token for offline token | API key |
+| `GET /apps/:appId/shops/:shop/status` | Check installation status | Public |
+| `GET /apps/:appId/shops` | List all shops for an app | Public |
+| `GET /` | Embedded app status page (app-specific filtering) | Public |
+| `POST /webhooks/app-uninstalled` | Handle app uninstall webhook | Public (HMAC verified) |
+
+**Stack:** Fastify, TypeScript, AWS Lambda, DynamoDB, CDK, `@shopify/admin-api-client`
+
+**Recent additions:**
+- Embedded app support with iframe-ready status pages
+- Client example library with 5 working example scripts
+- Security documentation and token masking utilities
+- Production test scripts for real API validation
+- Comprehensive error handling and validation
 
 ---
 
